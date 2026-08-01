@@ -1,0 +1,52 @@
+﻿﻿# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+data/
+
+# Cache / temp
+.cache/
+.parcel-cache/
+.vite/
+.turbo/
+.nyc_output/
+tmp/
+temp/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Archives / large binary dumps
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.bak
+*.dump
+*.sql
+*.sqlite
+*.sqlite3
