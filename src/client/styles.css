@@ -740,6 +740,201 @@ body {
   filter: brightness(0.7);
 }
 
+.preview-panel {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 25px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.preview-title {
+  color: #00fff2;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+.preview-hint {
+  color: #666;
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
+
+.preview-error {
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid #ff6b6b;
+  border-radius: 10px;
+  padding: 15px;
+  color: #ff6b6b;
+  text-align: center;
+}
+
+.preview-loading {
+  color: #888;
+  text-align: center;
+  padding: 20px;
+}
+
+.preview-section {
+  margin-bottom: 20px;
+}
+
+.preview-section:last-child {
+  margin-bottom: 0;
+}
+
+.preview-section-title {
+  color: #ff00ff;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+.trait-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.trait-preview-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 12px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trait-preview-name {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.trait-outcome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.trait-outcome:last-child {
+  margin-bottom: 0;
+}
+
+.trait-outcome-label {
+  min-width: 80px;
+  font-size: 0.9rem;
+}
+
+.trait-outcome-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.trait-outcome-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.trait-outcome-fill.dominant {
+  background: linear-gradient(90deg, #00fff2, #00fff288);
+}
+
+.trait-outcome-fill.recessive {
+  background: linear-gradient(90deg, #ff00ff, #ff00ff88);
+}
+
+.trait-outcome-prob {
+  min-width: 55px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #00fff2;
+}
+
+.mutation-summary {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mutation-label {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.mutation-value {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #ff6b6b;
+}
+
+.species-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.species-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 12px 15px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.species-preview-icon {
+  font-size: 2rem;
+}
+
+.species-preview-info {
+  flex: 1;
+}
+
+.species-preview-name {
+  font-weight: bold;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+}
+
+.species-preview-rarity {
+  font-size: 0.8rem;
+}
+
+.species-preview-prob {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffc107;
+  min-width: 70px;
+  text-align: right;
+}
+
+.species-preview-item.zero-prob {
+  opacity: 0.4;
+}
+
+.species-preview-item.zero-prob .species-preview-prob {
+  color: #555;
+}
+
+.preview-no-species {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  padding: 10px;
+}
+
 @media (max-width: 768px) {
   .genetics-info {
     grid-template-columns: 1fr;

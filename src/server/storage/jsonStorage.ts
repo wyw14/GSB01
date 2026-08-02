@@ -5,7 +5,7 @@ import { generateRandomGenotype } from '../genetics/mendel';
 import { genotypeToPhenotype, generateName } from '../genetics/genotypeToPhenotype';
 import { SPECIES } from '../data/species';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.GAME_DATA_DIR || path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
 
 function generateId(): string {
@@ -92,6 +92,22 @@ export function loadGameState(): GameState {
     const defaultState = getDefaultState();
     saveGameState(defaultState);
     return defaultState;
+  }
+}
+
+// 严格只读：不创建目录、不创建文件、不写回归一化结果
+// 供预览接口使用，确保任何预览请求（包括错误请求）都不产生副作用
+export function loadGameStateReadOnly(): GameState | null {
+  if (!fs.existsSync(STATE_FILE)) {
+    return null;
+  }
+
+  try {
+    const data = fs.readFileSync(STATE_FILE, 'utf-8');
+    const parsedState = JSON.parse(data) as GameState;
+    return normalizeGameState(parsedState);
+  } catch {
+    return null;
   }
 }
 

@@ -2,6 +2,8 @@ import {
   GameState,
   CrossBreedRequest,
   CrossBreedResponse,
+  CrossBreedPreviewRequest,
+  CrossBreedPreviewResponse,
   Species,
   Plant
 } from '../shared/types';
@@ -18,8 +20,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP ${response.status}`);
+    const errorData = await response.json().catch(() => ({ error: 'Unknown error', code: 'UNKNOWN' as const }));
+    const error = new Error(errorData.error || `HTTP ${response.status}`) as Error & { code?: string; status?: number };
+    error.code = errorData.code;
+    error.status = response.status;
+    throw error;
   }
 
   return response.json();
@@ -45,10 +50,19 @@ export const api = {
     });
   },
 
-  setUVLevel(uvLevel: number): Promise<GameState> {
+  preview(data: CrossBreedPreviewRequest, signal?: AbortSignal): Promise<CrossBreedPreviewResponse> {
+    return request<CrossBreedPreviewResponse>('/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      signal
+    });
+  },
+
+  setUVLevel(uvLevel: number, signal?: AbortSignal): Promise<GameState> {
     return request<GameState>('/uv', {
       method: 'POST',
-      body: JSON.stringify({ uvLevel })
+      body: JSON.stringify({ uvLevel }),
+      signal
     });
   },
 
