@@ -8,13 +8,22 @@ import {
   unlockSpecies,
   setUVLevel,
   selectParent,
-  generateId
+  generateId,
+  readGameStateReadOnly,
+  GameStateUnavailableError
 } from '../storage/jsonStorage';
-import { crossGenotypes, mutateGenotype, generateRandomGenotype } from '../genetics/mendel';
+import { crossParents, generateRandomGenotype } from '../genetics/mendel';
 import { genotypeToPhenotype, generateName } from '../genetics/genotypeToPhenotype';
 import { checkNewSpecies } from '../genetics/speciesDetector';
+import { computeCrossPreview } from '../genetics/crossPreview';
 import { SPECIES } from '../data/species';
-import { CrossBreedRequest, CrossBreedResponse, Plant, GameState } from '../../shared/types';
+import {
+  CrossBreedRequest,
+  CrossBreedResponse,
+  CrossPreviewRequest,
+  Plant,
+  GameState
+} from '../../shared/types';
 
 const router = Router();
 
@@ -65,9 +74,8 @@ router.post('/crossbreed', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'One or both parents not found' });
     }
 
-    let offspringGenotype = crossGenotypes(parent1.genotype, parent2.genotype);
-    const mutationResult = mutateGenotype(offspringGenotype, uvLevel);
-    offspringGenotype = mutationResult.genotype;
+    const crossResult = crossParents(parent1.genotype, parent2.genotype, uvLevel);
+    const offspringGenotype = crossResult.genotype;
 
     const offspringPhenotype = genotypeToPhenotype(offspringGenotype);
     const maxGeneration = Math.max(parent1.generation, parent2.generation);
@@ -78,7 +86,7 @@ router.post('/crossbreed', (req: Request, res: Response) => {
       genotype: offspringGenotype,
       phenotype: offspringPhenotype,
       generation: maxGeneration + 1,
-      isMutant: mutationResult.mutated
+      isMutant: crossResult.mutated
     };
 
     let newState = addPlant(state, offspring);
@@ -95,8 +103,8 @@ router.post('/crossbreed', (req: Request, res: Response) => {
 
     const response: CrossBreedResponse = {
       offspring,
-      mutationOccurred: mutationResult.mutated,
-      mutationDetails: mutationResult.mutationDetails,
+      mutationOccurred: crossResult.mutated,
+      mutationDetails: crossResult.mutationDetails,
       newSpeciesUnlocked: newSpecies || undefined
     };
 
@@ -104,6 +112,50 @@ router.post('/crossbreed', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Crossbreed error:', error);
     res.status(500).json({ error: 'Failed to crossbreed' });
+  }
+});
+
+// 只读的杂交预览：仅读取当前存档并做精确概率计算，绝不新增植物/解锁物种/改亲本/写存档。
+router.post('/crossbreed/preview', (req: Request, res: Response) => {
+  try {
+    const { parent1Id, parent2Id, uvLevel }: CrossPreviewRequest = req.body;
+
+    if (!parent1Id || !parent2Id) {
+      return res.status(400).json({ error: '请先选择两株亲本植物' });
+    }
+
+    if (parent1Id === parent2Id) {
+      return res.status(400).json({ error: '请选择两株不同的亲本植物' });
+    }
+
+    if (typeof uvLevel !== 'number' || Number.isNaN(uvLevel) || uvLevel < 0 || uvLevel > 100) {
+      return res.status(400).json({ error: '紫外线强度需在 0 到 100 之间' });
+    }
+
+    // 严格只读：不使用 loadGameState（其会在缺失/损坏/需归一化时创建或重写存档），
+    // 改用 readGameStateReadOnly，存档不存在或损坏时返回错误但绝不落盘。
+    let state: GameState;
+    try {
+      state = readGameStateReadOnly();
+    } catch (error) {
+      if (error instanceof GameStateUnavailableError) {
+        return res.status(409).json({ error: '存档不可用，无法生成预览' });
+      }
+      throw error;
+    }
+
+    const parent1 = state.plants.find(p => p.id === parent1Id);
+    const parent2 = state.plants.find(p => p.id === parent2Id);
+
+    if (!parent1 || !parent2) {
+      return res.status(404).json({ error: '亲本植物不存在或已被删除' });
+    }
+
+    const preview = computeCrossPreview(parent1, parent2, uvLevel, state.unlockedSpecies);
+    res.json(preview);
+  } catch (error) {
+    console.error('Crossbreed preview error:', error);
+    res.status(500).json({ error: 'Failed to compute crossbreed preview' });
   }
 });
 

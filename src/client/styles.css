@@ -761,3 +761,80 @@ body {
     font-size: 1.8rem;
   }
 }
+
+/* ---- 杂交预览（只读）面板 ---- */
+.cross-preview {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid rgba(0, 255, 242, 0.25);
+  border-radius: 14px;
+  background: rgba(0, 255, 242, 0.04);
+}
+
+.preview-title {
+  color: #00fff2;
+  margin-bottom: 14px;
+  font-size: 1.1rem;
+}
+
+.preview-hint {
+  color: #8892a6;
+  font-size: 0.9rem;
+}
+
+.preview-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  background: rgba(255, 107, 107, 0.12);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+}
+
+.preview-summary strong {
+  color: #ff8a8a;
+  font-size: 1.1rem;
+}
+
+.preview-traits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.preview-group {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.preview-group h4 {
+  color: #00fff2;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  padding: 3px 0;
+}
+
+.preview-label {
+  color: #d0d6e2;
+}
+
+.preview-prob {
+  color: #ffd166;
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-row-muted .preview-label,
+.preview-row-muted .preview-prob {
+  color: #8892a6;
+}
