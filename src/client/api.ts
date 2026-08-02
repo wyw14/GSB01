@@ -2,6 +2,8 @@ import {
   GameState,
   CrossBreedRequest,
   CrossBreedResponse,
+  CrossBreedPreviewRequest,
+  CrossBreedPreviewResponse,
   Species,
   Plant
 } from '../shared/types';
@@ -62,6 +64,13 @@ export const api = {
   deletePlant(plantId: string): Promise<GameState> {
     return request<GameState>(`/plants/${plantId}`, {
       method: 'DELETE'
+    });
+  },
+
+  previewCrossbreed(data: CrossBreedPreviewRequest): Promise<CrossBreedPreviewResponse> {
+    return request<CrossBreedPreviewResponse>('/preview', {
+      method: 'POST',
+      body: JSON.stringify(data)
     });
   },
 

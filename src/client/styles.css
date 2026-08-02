@@ -632,6 +632,124 @@ body {
   color: #888;
 }
 
+.preview-panel {
+  margin-top: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 242, 0.25);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.preview-panel:empty {
+  display: none;
+}
+
+.preview-title {
+  color: #00fff2;
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border: 1px solid rgba(0, 255, 242, 0.5);
+  border-radius: 10px;
+  color: #00fff2;
+  font-weight: normal;
+}
+
+.preview-hint {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.preview-error {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+}
+
+.preview-mutation {
+  margin-bottom: 14px;
+  color: #ffd76b;
+  font-size: 0.95rem;
+}
+
+.preview-section {
+  margin-top: 14px;
+}
+
+.preview-section h4 {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.preview-trait {
+  margin-bottom: 10px;
+}
+
+.preview-trait-name {
+  font-size: 0.85rem;
+  color: #ccc;
+  margin-bottom: 4px;
+}
+
+.preview-outcome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.preview-outcome-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.preview-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00fff2, #00b8ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.preview-bar-fill.species {
+  background: linear-gradient(90deg, #ff00ff, #ff6bff);
+}
+
+.preview-bar-fill.none {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.preview-outcome-pct {
+  width: 64px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 0.8rem;
+  color: #00fff2;
+  font-variant-numeric: tabular-nums;
+}
+
 .modal {
   position: fixed;
   top: 0;
