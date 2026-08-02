@@ -3,21 +3,26 @@ import {
   CrossBreedRequest,
   CrossBreedResponse,
   Species,
-  Plant
+  Plant,
+  PreviewRequest,
+  PreviewResult
 } from '../shared/types';
 
 const API_BASE = '/api';
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+type RequestOptions = RequestInit & { allowErrorBody?: boolean };
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const { allowErrorBody = false, ...fetchOptions } = options;
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...fetchOptions.headers
     },
-    ...options
+    ...fetchOptions
   });
 
-  if (!response.ok) {
+  if (!response.ok && !allowErrorBody) {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(error.error || `HTTP ${response.status}`);
   }
@@ -26,48 +31,62 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
-  getState(): Promise<GameState> {
-    return request<GameState>('/state');
+  getState(signal?: AbortSignal): Promise<GameState> {
+    return request<GameState>('/state', { signal });
   },
 
-  getSpecies(): Promise<Species[]> {
-    return request<Species[]>('/species');
+  getSpecies(signal?: AbortSignal): Promise<Species[]> {
+    return request<Species[]>('/species', { signal });
   },
 
   resetGame(): Promise<GameState> {
     return request<GameState>('/reset', { method: 'POST' });
   },
 
-  crossbreed(data: CrossBreedRequest): Promise<CrossBreedResponse> {
+  crossbreed(data: CrossBreedRequest, signal?: AbortSignal): Promise<CrossBreedResponse> {
     return request<CrossBreedResponse>('/crossbreed', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal
     });
   },
 
-  setUVLevel(uvLevel: number): Promise<GameState> {
+  setUVLevel(uvLevel: number, signal?: AbortSignal): Promise<GameState> {
     return request<GameState>('/uv', {
       method: 'POST',
-      body: JSON.stringify({ uvLevel })
+      body: JSON.stringify({ uvLevel }),
+      signal
     });
   },
 
-  selectParent(plantId: string, slot: 1 | 2): Promise<GameState> {
+  selectParent(plantId: string, slot: 1 | 2, signal?: AbortSignal): Promise<GameState> {
     return request<GameState>('/select', {
       method: 'POST',
-      body: JSON.stringify({ plantId, slot })
+      body: JSON.stringify({ plantId, slot }),
+      signal
     });
   },
 
-  deletePlant(plantId: string): Promise<GameState> {
+  deletePlant(plantId: string, signal?: AbortSignal): Promise<GameState> {
     return request<GameState>(`/plants/${plantId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      signal
     });
   },
 
-  generatePlant(): Promise<{ plant: Plant; newSpecies?: Species }> {
+  generatePlant(signal?: AbortSignal): Promise<{ plant: Plant; newSpecies?: Species }> {
     return request<{ plant: Plant; newSpecies?: Species }>('/generate', {
-      method: 'POST'
+      method: 'POST',
+      signal
+    });
+  },
+
+  previewCrossbreed(data: PreviewRequest, signal?: AbortSignal): Promise<PreviewResult> {
+    return request<PreviewResult>('/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+      allowErrorBody: true,
+      signal
     });
   }
 };

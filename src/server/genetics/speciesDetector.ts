@@ -8,7 +8,7 @@ const RARITY_SCORE: Record<Species['rarity'], number> = {
   legendary: 4
 };
 
-function genotypeMatches(plantGenotype: Genotype, requiredGenotype: Partial<Genotype>): boolean {
+export function genotypeMatches(plantGenotype: Genotype, requiredGenotype: Partial<Genotype>): boolean {
   for (const gene of GENE_KEYS) {
     const required = requiredGenotype[gene];
     if (required) {
@@ -22,7 +22,7 @@ function genotypeMatches(plantGenotype: Genotype, requiredGenotype: Partial<Geno
   return true;
 }
 
-function phenotypeMatches(plantPhenotype: Phenotype, requiredPhenotype: Partial<Phenotype>): boolean {
+export function phenotypeMatches(plantPhenotype: Phenotype, requiredPhenotype: Partial<Phenotype>): boolean {
   for (const [key, value] of Object.entries(requiredPhenotype)) {
     if (plantPhenotype[key as keyof Phenotype] !== value) {
       return false;
@@ -35,22 +35,41 @@ function getSpeciesSpecificity(species: Species): number {
   return Object.keys(species.requiredGenotype).length + Object.keys(species.requiredPhenotype).length;
 }
 
-export function detectMatchingSpecies(plant: Plant): Species[] {
-  return SPECIES
-    .map((species, index) => ({ species, index }))
-    .filter(({ species }) =>
-      genotypeMatches(plant.genotype, species.requiredGenotype) &&
-      phenotypeMatches(plant.phenotype, species.requiredPhenotype)
-    )
+type RankedSpecies = { species: Species; index: number; specificity: number; rarity: number };
+
+export function rankSpecies(speciesList: Species[] = SPECIES): RankedSpecies[] {
+  return speciesList
+    .map((species, index) => ({
+      species,
+      index,
+      specificity: getSpeciesSpecificity(species),
+      rarity: RARITY_SCORE[species.rarity]
+    }))
     .sort((a, b) => {
-      const specificityDiff = getSpeciesSpecificity(b.species) - getSpeciesSpecificity(a.species);
+      const specificityDiff = b.specificity - a.specificity;
       if (specificityDiff !== 0) return specificityDiff;
 
-      const rarityDiff = RARITY_SCORE[b.species.rarity] - RARITY_SCORE[a.species.rarity];
+      const rarityDiff = b.rarity - a.rarity;
       if (rarityDiff !== 0) return rarityDiff;
 
       return a.index - b.index;
-    })
+    });
+}
+
+export function speciesMatchesGenotypePhenotype(
+  genotype: Genotype,
+  phenotype: Phenotype,
+  species: Species
+): boolean {
+  return genotypeMatches(genotype, species.requiredGenotype)
+    && phenotypeMatches(phenotype, species.requiredPhenotype);
+}
+
+export function detectMatchingSpecies(plant: Plant): Species[] {
+  return rankSpecies()
+    .filter(({ species }) =>
+      speciesMatchesGenotypePhenotype(plant.genotype, plant.phenotype, species)
+    )
     .map(({ species }) => species);
 }
 
