@@ -2,6 +2,8 @@ import {
   GameState,
   CrossBreedRequest,
   CrossBreedResponse,
+  CrossPreviewRequest,
+  CrossPreviewResponse,
   Species,
   Plant
 } from '../shared/types';
@@ -40,6 +42,13 @@ export const api = {
 
   crossbreed(data: CrossBreedRequest): Promise<CrossBreedResponse> {
     return request<CrossBreedResponse>('/crossbreed', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  crossPreview(data: CrossPreviewRequest): Promise<CrossPreviewResponse> {
+    return request<CrossPreviewResponse>('/crossbreed/preview', {
       method: 'POST',
       body: JSON.stringify(data)
     });

@@ -10,6 +10,8 @@
     "build": "npm run build:server && npm run build:client",
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "vite build",
+    "typecheck:test": "tsc -p tsconfig.test.json",
+    "test": "node --test scripts/run-tests.js",
     "start": "node dist/server/server/index.js"
   },
   "dependencies": {

@@ -3,8 +3,14 @@ import {
   GameState,
   Species,
   Plant,
-  Phenotype
+  Phenotype,
+  CrossPreviewResponse
 } from '../shared/types';
+import {
+  PreviewRequestController,
+  validatePreviewInputs,
+  buildPreviewRequest
+} from './previewController';
 
 const GENE_INFO = {
   glowColor: {
@@ -54,6 +60,11 @@ const GENE_KEYS = [
 
 let gameState: GameState | null = null;
 let allSpecies: Species[] = [];
+// 预览请求的并发/废止控制器：确保旧的在途预览响应不会覆盖更新后的提示。
+const previewController = new PreviewRequestController();
+// 记录“最近一次 UV 保存请求”，用于在杂交前等待它完成，
+// 保证真实杂交写入的存档 UV 与页面当前显示、预览所用的 UV 一致。
+let pendingUvSave: Promise<unknown> | null = null;
 
 const DOM = {
   tabs: document.querySelectorAll('.tab-btn'),
@@ -66,6 +77,7 @@ const DOM = {
   parent2Content: document.getElementById('parent2-content'),
   crossbreedBtn: document.getElementById('crossbreed-btn') as HTMLButtonElement,
   generateBtn: document.getElementById('generate-btn') as HTMLButtonElement,
+  previewBody: document.getElementById('preview-body'),
   plantsGrid: document.getElementById('plants-grid'),
   geneticsDetail: document.getElementById('genetics-detail'),
   collectionGrid: document.getElementById('collection-grid'),
@@ -127,6 +139,7 @@ function updateUI(): void {
   updateCrossbreedButton();
   renderPlants();
   renderCollection();
+  refreshPreview();
 }
 
 function updateParentSlots(): void {
@@ -162,6 +175,118 @@ function updateCrossbreedButton(): void {
     gameState.selectedParent1 !== gameState.selectedParent2
   );
   DOM.crossbreedBtn.disabled = !canBreed;
+}
+
+function renderPreviewMessage(message: string): void {
+  if (!DOM.previewBody) return;
+  DOM.previewBody.innerHTML = `<p class="preview-hint">${message}</p>`;
+}
+
+// 同步废止当前预览：任何会改变亲本的操作（取消/切换/删除）发起时立即调用，
+// 先递增令牌作废在途请求，并立刻清掉已渲染的旧遗传数字，
+// 避免在等待选择/删除的网络往返期间旧预览短暂残留。刷新后的结果由 refreshPreview 给出。
+function invalidatePreviewNow(): void {
+  previewController.begin();
+  // 仅当当前确实渲染着遗传预览面板时才替换为过渡提示，避免覆盖“请选择两株亲本”等静态提示。
+  if (DOM.previewBody?.querySelector('.preview-summary')) {
+    renderPreviewMessage('正在更新预览…');
+  }
+}
+
+function formatPercent(probability: number): string {
+  return `${probability.toFixed(2)}%`;
+}
+
+function renderPreview(preview: CrossPreviewResponse): void {
+  if (!DOM.previewBody) return;
+
+  const traitsHtml = preview.traits.map(trait => {
+    const rows = trait.outcomes.map(outcome => `
+      <div class="preview-row">
+        <span class="preview-label">${outcome.label}</span>
+        <span class="preview-prob">${formatPercent(outcome.probability)}</span>
+      </div>
+    `).join('');
+    return `
+      <div class="preview-group">
+        <h4>${trait.geneLabel}</h4>
+        ${rows}
+      </div>
+    `;
+  }).join('');
+
+  const unlockRows = preview.speciesUnlock.chances.map(chance => `
+    <div class="preview-row">
+      <span class="preview-label">${chance.speciesName}</span>
+      <span class="preview-prob">${formatPercent(chance.probability)}</span>
+    </div>
+  `).join('');
+
+  const unlockHtml = preview.speciesUnlock.chances.length > 0
+    ? `
+      <div class="preview-group">
+        <h4>物种解锁概率</h4>
+        ${unlockRows}
+        <div class="preview-row preview-row-muted">
+          <span class="preview-label">本次不解锁新物种</span>
+          <span class="preview-prob">${formatPercent(preview.speciesUnlock.noUnlockProbability)}</span>
+        </div>
+      </div>
+    `
+    : `
+      <div class="preview-group">
+        <h4>物种解锁概率</h4>
+        <p class="preview-hint">所有物种均已解锁。</p>
+      </div>
+    `;
+
+  DOM.previewBody.innerHTML = `
+    <div class="preview-summary">
+      <span>整株突变概率</span>
+      <strong>${formatPercent(preview.mutationProbability)}</strong>
+    </div>
+    <div class="preview-traits">
+      ${traitsHtml}
+    </div>
+    ${unlockHtml}
+  `;
+}
+
+// 只读地拉取并展示预览。亲本缺失/相同/UV越界等由此处或服务端给出明确提示，
+// 不会新增植物、解锁物种或改动亲本与存档。
+async function refreshPreview(): Promise<void> {
+  // 每次调用先递增令牌，立即废止任何仍在飞行中的旧预览请求——
+  // 这样即便合法预览尚未返回，只要亲本被取消/变同株/被删除/UV 变无效，
+  // 旧结果回来时令牌已过期会被丢弃，不会覆盖当前提示。
+  const token = previewController.begin();
+
+  if (!gameState) return;
+
+  const { selectedParent1, selectedParent2, uvLevel } = gameState;
+
+  const validationMessage = validatePreviewInputs({
+    selectedParent1,
+    selectedParent2,
+    uvLevel,
+    plantExists: (id: string) => gameState!.plants.some(p => p.id === id)
+  });
+  if (validationMessage !== null) {
+    renderPreviewMessage(validationMessage);
+    return;
+  }
+
+  try {
+    const preview = await api.crossPreview(
+      buildPreviewRequest(selectedParent1!, selectedParent2!, uvLevel)
+    );
+    // 丢弃过期响应：期间又发生了新的亲本/UV变化。
+    if (!previewController.isCurrent(token)) return;
+    renderPreview(preview);
+  } catch (error) {
+    if (!previewController.isCurrent(token)) return;
+    const message = error instanceof Error ? error.message : '预览失败，请重试';
+    renderPreviewMessage(message);
+  }
 }
 
 function getPlantEmoji(phenotype: Phenotype): string {
@@ -255,6 +380,7 @@ async function handlePlantClick(plantId: string): void {
   }
 
   try {
+    invalidatePreviewNow();
     gameState = await api.selectParent(plantId, slot);
     updateUI();
   } catch (error) {
@@ -302,22 +428,43 @@ function showPlantGenetics(plant: Plant): void {
 async function handleUVChange(): Promise<void> {
   const value = parseInt(DOM.uvSlider.value);
   DOM.uvValue!.textContent = `${value}%`;
-  
-  try {
-    gameState = await api.setUVLevel(value);
-  } catch (error) {
-    console.error('Failed to set UV level:', error);
+
+  // 乐观更新本地 UV：预览与紧接着的真实杂交都以页面当前显示的 UV 为准，
+  // 不必等待保存请求返回，避免“UV 保存未完成前杂交仍用旧值”。
+  if (gameState) {
+    gameState.uvLevel = value;
   }
+  refreshPreview();
+
+  // 记录本次保存请求，杂交时会 await 它完成，保证落盘 UV 与显示一致。
+  const savePromise = api.setUVLevel(value)
+    .then(state => {
+      // 仅当期间没有更新的 UV 变更时，才用服务端返回覆盖，避免旧响应回灌。
+      if (pendingUvSave === savePromise) {
+        gameState = state;
+      }
+    })
+    .catch(error => {
+      console.error('Failed to set UV level:', error);
+    });
+  pendingUvSave = savePromise;
 }
 
 async function handleCrossbreed(): Promise<void> {
   if (!gameState || !gameState.selectedParent1 || !gameState.selectedParent2) return;
 
+  // 以页面当前显示（滑块）的 UV 为准，并等待挂起的 UV 保存完成，
+  // 确保真实杂交读取到的存档 UV 与显示、预览三者一致。
+  const uvLevel = parseInt(DOM.uvSlider.value);
+  if (pendingUvSave) {
+    await pendingUvSave;
+  }
+
   try {
     const result = await api.crossbreed({
       parent1Id: gameState.selectedParent1,
       parent2Id: gameState.selectedParent2,
-      uvLevel: gameState.uvLevel
+      uvLevel
     });
 
     gameState = await api.getState();
@@ -417,6 +564,7 @@ async function handleDeletePlant(plantId: string): Promise<void> {
   if (!confirm('确定要删除这株植物吗？')) return;
 
   try {
+    invalidatePreviewNow();
     gameState = await api.deletePlant(plantId);
     updateUI();
   } catch (error) {

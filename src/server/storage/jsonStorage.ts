@@ -100,6 +100,44 @@ export function saveGameState(state: GameState): void {
   fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
 }
 
+// 只读读取存档，供预览等只读接口使用。
+// 与 loadGameState 的关键区别：绝不创建数据目录、绝不创建/修复/重写存档文件。
+// 存档不存在或损坏时抛出 GameStateUnavailableError，由调用方转成错误响应，
+// 归一化只在内存中进行、不落盘，从而保证存档是否存在及其原始字节都不被改变。
+export class GameStateUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GameStateUnavailableError';
+  }
+}
+
+export function readGameStateReadOnly(): GameState {
+  if (!fs.existsSync(STATE_FILE)) {
+    throw new GameStateUnavailableError('Game state file does not exist');
+  }
+
+  let data: string;
+  try {
+    data = fs.readFileSync(STATE_FILE, 'utf-8');
+  } catch {
+    throw new GameStateUnavailableError('Game state file is unreadable');
+  }
+
+  let parsedState: GameState;
+  try {
+    parsedState = JSON.parse(data) as GameState;
+  } catch {
+    throw new GameStateUnavailableError('Game state file is corrupted');
+  }
+
+  if (!parsedState || !Array.isArray(parsedState.plants)) {
+    throw new GameStateUnavailableError('Game state file is malformed');
+  }
+
+  // 仅在内存中归一化，不写回文件。
+  return normalizeGameState(parsedState);
+}
+
 export function resetGameState(): GameState {
   const defaultState = getDefaultState();
   saveGameState(defaultState);
