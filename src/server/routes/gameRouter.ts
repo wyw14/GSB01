@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import {
   loadGameState,
+  loadGameStateReadOnly,
   saveGameState,
   resetGameState,
   addPlant,
@@ -13,10 +14,23 @@ import {
 import { crossGenotypes, mutateGenotype, generateRandomGenotype } from '../genetics/mendel';
 import { genotypeToPhenotype, generateName } from '../genetics/genotypeToPhenotype';
 import { checkNewSpecies } from '../genetics/speciesDetector';
+import { computeCrossbreedPreview } from '../genetics/preview';
 import { SPECIES } from '../data/species';
-import { CrossBreedRequest, CrossBreedResponse, Plant, GameState } from '../../shared/types';
+import {
+  CrossBreedRequest,
+  CrossBreedResponse,
+  Plant,
+  GameState,
+  PreviewRequest,
+  PreviewResult,
+  PreviewError
+} from '../../shared/types';
 
 const router = Router();
+
+function errorResult(code: PreviewError['code'], message: string): PreviewResult {
+  return { valid: false, error: { code, message } };
+}
 
 router.get('/state', (req: Request, res: Response) => {
   try {
@@ -107,10 +121,52 @@ router.post('/crossbreed', (req: Request, res: Response) => {
   }
 });
 
+router.post('/preview', (req: Request, res: Response) => {
+  try {
+    const { parent1Id, parent2Id, uvLevel } = req.body as Partial<PreviewRequest>;
+
+    if (!parent1Id || !parent2Id) {
+      const result = errorResult('MISSING_PARENT', '请先选择两株亲本植物');
+      return res.status(400).json(result);
+    }
+
+    if (parent1Id === parent2Id) {
+      const result = errorResult('SAME_PARENT', '两株亲本必须是不同的植物');
+      return res.status(400).json(result);
+    }
+
+    if (typeof uvLevel !== 'number' || Number.isNaN(uvLevel) || uvLevel < 0 || uvLevel > 100) {
+      const result = errorResult('UV_OUT_OF_RANGE', '紫外线强度必须在 0 到 100 之间');
+      return res.status(400).json(result);
+    }
+
+    const state = loadGameStateReadOnly();
+    const parent1 = state.plants.find(p => p.id === parent1Id);
+    const parent2 = state.plants.find(p => p.id === parent2Id);
+
+    if (!parent1 || !parent2) {
+      const result = errorResult('PARENT_NOT_FOUND', '选择的亲本植物已不存在，请重新选择');
+      return res.status(404).json(result);
+    }
+
+    const preview = computeCrossbreedPreview({
+      parent1,
+      parent2,
+      uvLevel,
+      unlockedSpecies: state.unlockedSpecies
+    });
+
+    res.json(preview);
+  } catch (error) {
+    console.error('Preview error:', error);
+    res.status(500).json({ valid: false, error: { code: 'MISSING_PARENT', message: '预览计算失败' } } as PreviewResult);
+  }
+});
+
 router.post('/uv', (req: Request, res: Response) => {
   try {
     const { uvLevel } = req.body;
-    
+
     if (uvLevel === undefined || uvLevel === null) {
       return res.status(400).json({ error: 'UV level is required' });
     }

@@ -10,7 +10,9 @@
     "build": "npm run build:server && npm run build:client",
     "build:server": "tsc -p tsconfig.server.json",
     "build:client": "vite build",
-    "start": "node dist/server/server/index.js"
+    "start": "node dist/server/server/index.js",
+    "test": "ts-node --project tsconfig.server.json src/server/tests/preview.test.ts",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "cors": "^2.8.5",

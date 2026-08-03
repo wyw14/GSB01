@@ -5,7 +5,9 @@ import { generateRandomGenotype } from '../genetics/mendel';
 import { genotypeToPhenotype, generateName } from '../genetics/genotypeToPhenotype';
 import { SPECIES } from '../data/species';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.PLANT_GAME_DATA_DIR
+  ? path.resolve(process.env.PLANT_GAME_DATA_DIR)
+  : path.join(process.cwd(), 'data');
 const STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
 
 function generateId(): string {
@@ -70,13 +72,13 @@ function normalizeGameState(state: GameState): GameState {
 
 export function loadGameState(): GameState {
   ensureDataDir();
-  
+
   if (!fs.existsSync(STATE_FILE)) {
     const defaultState = getDefaultState();
     saveGameState(defaultState);
     return defaultState;
   }
-  
+
   try {
     const data = fs.readFileSync(STATE_FILE, 'utf-8');
     const parsedState = JSON.parse(data) as GameState;
@@ -92,6 +94,24 @@ export function loadGameState(): GameState {
     const defaultState = getDefaultState();
     saveGameState(defaultState);
     return defaultState;
+  }
+}
+
+// 预览专用：无论存档是否存在、损坏或需要归一化，都只在内存中处理，
+// 绝不调用 saveGameState，也不创建 data 目录。其他接口仍使用 loadGameState，
+// 保持原本的自动初始化和归一化写回行为。
+export function loadGameStateReadOnly(): GameState {
+  if (!fs.existsSync(STATE_FILE)) {
+    return getDefaultState();
+  }
+
+  try {
+    const data = fs.readFileSync(STATE_FILE, 'utf-8');
+    const parsedState = JSON.parse(data) as GameState;
+    return normalizeGameState(parsedState);
+  } catch (error) {
+    console.error('Failed to read game state for preview, using in-memory default:', error);
+    return getDefaultState();
   }
 }
 

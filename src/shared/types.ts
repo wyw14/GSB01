@@ -67,3 +67,62 @@ export type GeneInfo = {
   dominantTrait: string;
   recessiveTrait: string;
 };
+
+export type PreviewRequest = {
+  parent1Id: string;
+  parent2Id: string;
+  uvLevel: number;
+};
+
+export type PreviewErrorCode =
+  | 'MISSING_PARENT'
+  | 'SAME_PARENT'
+  | 'PARENT_NOT_FOUND'
+  | 'UV_OUT_OF_RANGE';
+
+export type PreviewError = {
+  code: PreviewErrorCode;
+  message: string;
+};
+
+export type GenotypeOutcome = {
+  genotype: [Allele, Allele];
+  probabilityPercent: number;
+};
+
+export type PhenotypeOutcome = {
+  phenotype: string;
+  probabilityPercent: number;
+};
+
+export type GenePreview = {
+  gene: keyof Genotype;
+  label: string;
+  genotypeOutcomes: GenotypeOutcome[];
+  phenotypeOutcomes: PhenotypeOutcome[];
+};
+
+export type SpeciesUnlockOutcome = {
+  speciesId: string;
+  speciesName: string;
+  rarity: Species['rarity'];
+  image: string;
+  matchProbabilityPercent: number;
+  unlockProbabilityPercent: number;
+  blockedBy: string[];
+};
+
+export type PreviewResponse = {
+  valid: true;
+  parent1Name: string;
+  parent2Name: string;
+  uvLevel: number;
+  perAlleleMutationRate: number;
+  mutationProbabilityPercent: number;
+  anySpeciesUnlockProbabilityPercent: number;
+  noSpeciesUnlockProbabilityPercent: number;
+  genes: GenePreview[];
+  speciesUnlocks: SpeciesUnlockOutcome[];
+};
+
+export type PreviewResult = PreviewResponse | { valid: false; error: PreviewError };
