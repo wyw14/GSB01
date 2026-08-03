@@ -67,3 +67,44 @@ export type GeneInfo = {
   dominantTrait: string;
   recessiveTrait: string;
 };
+
+export type ProbabilityEntry = {
+  label: string;
+  probability: number;
+};
+
+export type GenePreview = {
+  gene: keyof Genotype;
+  phenotypes: ProbabilityEntry[];
+};
+
+export type SpeciesUnlockProbability = {
+  speciesId: string;
+  speciesName: string;
+  rarity: Species['rarity'];
+  image: string;
+  probability: number;
+};
+
+export type CrossBreedPreviewRequest = {
+  parent1Id: string;
+  parent2Id: string;
+  uvLevel: number;
+};
+
+export type PreviewErrorCode =
+  | 'MISSING_PARENT'
+  | 'SAME_PARENT'
+  | 'PARENT_NOT_FOUND'
+  | 'UV_OUT_OF_RANGE';
+
+export type CrossBreedPreviewResponse = {
+  traitProbabilities: GenePreview[];
+  mutationProbability: number;
+  speciesUnlockProbabilities: SpeciesUnlockProbability[];
+};
+
+export type PreviewErrorResponse = {
+  error: string;
+  code: PreviewErrorCode;
+};

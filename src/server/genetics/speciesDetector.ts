@@ -8,7 +8,7 @@ const RARITY_SCORE: Record<Species['rarity'], number> = {
   legendary: 4
 };
 
-function genotypeMatches(plantGenotype: Genotype, requiredGenotype: Partial<Genotype>): boolean {
+export function genotypeMatches(plantGenotype: Genotype, requiredGenotype: Partial<Genotype>): boolean {
   for (const gene of GENE_KEYS) {
     const required = requiredGenotype[gene];
     if (required) {
@@ -22,7 +22,7 @@ function genotypeMatches(plantGenotype: Genotype, requiredGenotype: Partial<Geno
   return true;
 }
 
-function phenotypeMatches(plantPhenotype: Phenotype, requiredPhenotype: Partial<Phenotype>): boolean {
+export function phenotypeMatches(plantPhenotype: Phenotype, requiredPhenotype: Partial<Phenotype>): boolean {
   for (const [key, value] of Object.entries(requiredPhenotype)) {
     if (plantPhenotype[key as keyof Phenotype] !== value) {
       return false;
@@ -31,17 +31,12 @@ function phenotypeMatches(plantPhenotype: Phenotype, requiredPhenotype: Partial<
   return true;
 }
 
-function getSpeciesSpecificity(species: Species): number {
+export function getSpeciesSpecificity(species: Species): number {
   return Object.keys(species.requiredGenotype).length + Object.keys(species.requiredPhenotype).length;
 }
 
-export function detectMatchingSpecies(plant: Plant): Species[] {
-  return SPECIES
-    .map((species, index) => ({ species, index }))
-    .filter(({ species }) =>
-      genotypeMatches(plant.genotype, species.requiredGenotype) &&
-      phenotypeMatches(plant.phenotype, species.requiredPhenotype)
-    )
+export function sortSpeciesByPriority(speciesList: { species: Species; index: number }[]): Species[] {
+  return speciesList
     .sort((a, b) => {
       const specificityDiff = getSpeciesSpecificity(b.species) - getSpeciesSpecificity(a.species);
       if (specificityDiff !== 0) return specificityDiff;
@@ -52,6 +47,20 @@ export function detectMatchingSpecies(plant: Plant): Species[] {
       return a.index - b.index;
     })
     .map(({ species }) => species);
+}
+
+export function detectMatchingSpeciesFromGenotypePhenotype(genotype: Genotype, phenotype: Phenotype): Species[] {
+  const matching = SPECIES
+    .map((species, index) => ({ species, index }))
+    .filter(({ species }) =>
+      genotypeMatches(genotype, species.requiredGenotype) &&
+      phenotypeMatches(phenotype, species.requiredPhenotype)
+    );
+  return sortSpeciesByPriority(matching);
+}
+
+export function detectMatchingSpecies(plant: Plant): Species[] {
+  return detectMatchingSpeciesFromGenotypePhenotype(plant.genotype, plant.phenotype);
 }
 
 export function detectSpecies(plant: Plant): Species | null {
