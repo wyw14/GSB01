@@ -1,12 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { GameState, Plant } from '../../shared/types';
+import { applyParentSelection, applyPlantRemoval } from '../../shared/stateTransitions';
 import { generateRandomGenotype } from '../genetics/mendel';
 import { genotypeToPhenotype, generateName } from '../genetics/genotypeToPhenotype';
 import { SPECIES } from '../data/species';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
+// 延迟解析路径，测试可通过 GAME_DATA_DIR 指向临时目录
+function getDataDir(): string {
+  return process.env.GAME_DATA_DIR || path.join(process.cwd(), 'data');
+}
+
+function getStateFile(): string {
+  return path.join(getDataDir(), 'gamestate.json');
+}
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -42,8 +49,9 @@ function getDefaultState(): GameState {
 }
 
 function ensureDataDir(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const dataDir = getDataDir();
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
 }
 
@@ -70,15 +78,15 @@ function normalizeGameState(state: GameState): GameState {
 
 export function loadGameState(): GameState {
   ensureDataDir();
-  
-  if (!fs.existsSync(STATE_FILE)) {
+
+  if (!fs.existsSync(getStateFile())) {
     const defaultState = getDefaultState();
     saveGameState(defaultState);
     return defaultState;
   }
-  
+
   try {
-    const data = fs.readFileSync(STATE_FILE, 'utf-8');
+    const data = fs.readFileSync(getStateFile(), 'utf-8');
     const parsedState = JSON.parse(data) as GameState;
     const normalizedState = normalizeGameState(parsedState);
 
@@ -95,9 +103,29 @@ export function loadGameState(): GameState {
   }
 }
 
+/**
+ * 真正无副作用的状态读取：任何情况下都不写盘。
+ * 文件缺失或内容损坏时返回 null；需要归一化时只在内存中归一化，不回写存档。
+ */
+export function loadGameStateSnapshot(): GameState | null {
+  const stateFile = getStateFile();
+  if (!fs.existsSync(stateFile)) {
+    return null;
+  }
+
+  try {
+    const data = fs.readFileSync(stateFile, 'utf-8');
+    const parsedState = JSON.parse(data) as GameState;
+    return normalizeGameState(parsedState);
+  } catch (error) {
+    console.error('Failed to read game state snapshot:', error);
+    return null;
+  }
+}
+
 export function saveGameState(state: GameState): void {
   ensureDataDir();
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
+  fs.writeFileSync(getStateFile(), JSON.stringify(state, null, 2), 'utf-8');
 }
 
 export function resetGameState(): GameState {
@@ -114,12 +142,7 @@ export function addPlant(state: GameState, plant: Plant): GameState {
 }
 
 export function removePlant(state: GameState, plantId: string): GameState {
-  return {
-    ...state,
-    plants: state.plants.filter(p => p.id !== plantId),
-    selectedParent1: state.selectedParent1 === plantId ? null : state.selectedParent1,
-    selectedParent2: state.selectedParent2 === plantId ? null : state.selectedParent2
-  };
+  return applyPlantRemoval(state, plantId);
 }
 
 export function unlockSpecies(state: GameState, speciesId: string): GameState {
@@ -141,21 +164,7 @@ export function setUVLevel(state: GameState, uvLevel: number): GameState {
 }
 
 export function selectParent(state: GameState, parentId: string, parentSlot: 1 | 2): GameState {
-  if (parentSlot === 1) {
-    const shouldClearSlot = state.selectedParent1 === parentId;
-    return {
-      ...state,
-      selectedParent1: shouldClearSlot ? null : parentId,
-      selectedParent2: state.selectedParent2 === parentId ? null : state.selectedParent2
-    };
-  } else {
-    const shouldClearSlot = state.selectedParent2 === parentId;
-    return {
-      ...state,
-      selectedParent1: state.selectedParent1 === parentId ? null : state.selectedParent1,
-      selectedParent2: shouldClearSlot ? null : parentId
-    };
-  }
+  return applyParentSelection(state, parentId, parentSlot);
 }
 
 export { generateId };

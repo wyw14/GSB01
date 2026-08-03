@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import {
   loadGameState,
+  loadGameStateSnapshot,
   saveGameState,
   resetGameState,
   addPlant,
@@ -13,8 +14,9 @@ import {
 import { crossGenotypes, mutateGenotype, generateRandomGenotype } from '../genetics/mendel';
 import { genotypeToPhenotype, generateName } from '../genetics/genotypeToPhenotype';
 import { checkNewSpecies } from '../genetics/speciesDetector';
+import { computeCrossBreedPreview } from '../genetics/crossbreedPreview';
 import { SPECIES } from '../data/species';
-import { CrossBreedRequest, CrossBreedResponse, Plant, GameState } from '../../shared/types';
+import { CrossBreedRequest, CrossBreedResponse, CrossBreedPreviewRequest, Plant, GameState } from '../../shared/types';
 
 const router = Router();
 
@@ -104,6 +106,52 @@ router.post('/crossbreed', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Crossbreed error:', error);
     res.status(500).json({ error: 'Failed to crossbreed' });
+  }
+});
+
+// 只读预览：使用无副作用的快照读取，不新增植物、不解锁物种、任何情况下都不写存档
+router.post('/preview', (req: Request, res: Response) => {
+  try {
+    const { parent1Id, parent2Id, uvLevel }: CrossBreedPreviewRequest = req.body;
+
+    if (!parent1Id || !parent2Id) {
+      return res.status(400).json({ error: 'Both parents must be selected' });
+    }
+
+    if (parent1Id === parent2Id) {
+      return res.status(400).json({ error: 'Parents must be two different plants' });
+    }
+
+    const state = loadGameStateSnapshot();
+    if (!state) {
+      return res.status(409).json({ error: 'No valid game state available' });
+    }
+
+    const parent1 = state.plants.find(p => p.id === parent1Id);
+    const parent2 = state.plants.find(p => p.id === parent2Id);
+
+    if (!parent1 || !parent2) {
+      return res.status(404).json({ error: 'One or both parents not found' });
+    }
+
+    const effectiveUV = uvLevel === undefined ? state.uvLevel : uvLevel;
+    if (typeof effectiveUV !== 'number' || !Number.isFinite(effectiveUV) || effectiveUV < 0 || effectiveUV > 100) {
+      return res.status(400).json({ error: 'UV level must be a number between 0 and 100' });
+    }
+
+    const preview = computeCrossBreedPreview(
+      parent1Id,
+      parent2Id,
+      parent1.genotype,
+      parent2.genotype,
+      effectiveUV,
+      state.unlockedSpecies
+    );
+
+    res.json(preview);
+  } catch (error) {
+    console.error('Preview error:', error);
+    res.status(500).json({ error: 'Failed to compute preview' });
   }
 });
 
